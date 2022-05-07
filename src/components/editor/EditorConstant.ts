@@ -4,6 +4,7 @@ export const verticalSizeNum = 384;
 export const editorHeight = verticalSizeNum;
 export const quarterInterval = verticalSizeNum / 8;
 export const fps = 60;
+export const longTapThreshold = 250;
 
 export const canvasMarginHorizontal = 50;
 export const canvasMarginVertical = 25;

@@ -1,6 +1,14 @@
 <template>
   <div id="editor-main">
-    <div id="canvas" ref="canvas" tabindex="-1" @keydown.prevent="keydownAction"></div>
+    <div
+      id="canvas"
+      ref="canvas"
+      tabindex="-1"
+      @keydown.prevent="keydownAction"
+      @mouseup.prevent="clickAction"
+      @touchstart.prevent="touchStartAction"
+      @touchend.prevent="touchEndAction"
+    ></div>
     <speed-piece
       v-for="(speed, index) in scoreData.scores[page - 1].speeds"
       :key="index"
@@ -29,6 +37,7 @@ import {
   laneColors,
   canvasMarginHorizontal,
   canvasMarginVertical,
+  longTapThreshold
 } from "./EditorConstant";
 import { Timing } from "../../model/Timing";
 import { MusicService } from "./service/MusicService";
@@ -66,6 +75,7 @@ type DataType = {
   previousPosition: number;
   previousPage: number;
   previousDate: Date;
+  longTouchList: { [name: number]: { timer: NodeJS.Timer, touch: Touch } };
 };
 
 export default defineComponent({
@@ -107,6 +117,7 @@ export default defineComponent({
       previousPosition: 0,
       previousPage: 1,
       previousDate: new Date(0),
+      longTouchList: {}
     };
   },
 
@@ -224,6 +235,8 @@ export default defineComponent({
   beforeUnmount(): void {
     // 画面終了時に音楽を止める
     if (this.musicTimer) this.stopMusicLoop(this.musicTimer);
+
+    this.clearLongTouchList();
   },
   methods: {
     // ベースレイヤーの描画
@@ -401,14 +414,17 @@ export default defineComponent({
         this.playMusicLoop(this.timing);
       }
 
+      this.clearLongTouchList();
       this.currentPositionService.draw(this.currentPosition, page, this.timing);
     },
     pageMinus(n: number, position = 0): void {
       this.$emit("page-minus", n);
+      this.clearLongTouchList();
       this.currentPositionService.move(position, this.page, this.timing);
     },
     pagePlus(n: number): void {
       this.$emit("page-plus", n);
+      this.clearLongTouchList();
       this.currentPositionService.move(0, this.page, this.timing);
     },
 
@@ -617,6 +633,96 @@ export default defineComponent({
             break;
           }
         }
+      }
+    },
+
+    // タッチ開始時
+    touchStartAction(e: TouchEvent) {
+      Array.from(e.changedTouches).forEach(touch => {
+        // 一定時間後に長押しとして処理する
+        const timer = setTimeout(() => {
+          this.tapAction(touch, true);
+          delete this.longTouchList[touch.identifier];
+        }, longTapThreshold);
+
+        this.longTouchList[touch.identifier] = { touch: touch, timer: timer };
+      });
+    },
+
+    // タッチ終了時
+    touchEndAction(e: TouchEvent) {
+      Array.from(e.changedTouches).forEach(touch => {
+        // リストに残っている(長押しとして処理されていない)ものは通常タップとして処理
+        const start = this.longTouchList[touch.identifier];
+        if (start) {
+          clearTimeout(start.timer);
+          this.tapAction(start.touch, false);
+          delete this.longTouchList[touch.identifier];
+        }
+      });
+    },
+
+    // 長押しリストとタイマーのクリア
+    clearLongTouchList() {
+      Object.values(this.longTouchList).forEach(value => {
+        clearTimeout(value.timer);
+      });
+
+      this.longTouchList = {};
+    },
+
+    // タップ時の処理
+    // TouchEventはoffsetX,Yが無いためclientX,Yから計算
+    tapAction(touch: Touch, longTap: boolean) {
+      if (touch.target === null) return;
+
+      const target = touch.target as HTMLElement;
+      const rect = target.getBoundingClientRect();
+
+      const offsetX = touch.clientX - rect.x;
+      const offsetY = touch.clientY - rect.y;
+
+      this.clickTapAction(offsetX, offsetY, longTap);
+    },
+
+    // クリック時の処理
+    clickAction(e: MouseEvent) {
+      this.clickTapAction(e.offsetX, e.offsetY, e.shiftKey);
+    },
+
+    // クリック/タップ時の処理
+    clickTapAction(offsetX: number, offsetY: number, shiftKey: boolean) {
+      const lane = Math.floor((offsetX - canvasMarginHorizontal) / noteWidth);
+      const y = this.isReverse ? offsetY - canvasMarginVertical : editorHeight - (offsetY - canvasMarginVertical);
+      const position = Math.floor((y * verticalSizeNum) / editorHeight / this.divisor + 0.5) * this.divisor;
+
+      if (position >= 0 && position < verticalSizeNum) {
+        if (lane >= 0 && lane < this.keyNum) {
+          // ノートの追加/削除
+          const noteService = this.noteService as NoteService;
+          if (noteService.hasNote(this.page, lane, position).exists) {
+            noteService.removeOne(this.page, this.page, lane, position);
+          } else {
+            noteService.addOne(this.page, this.page, lane, position, shiftKey);
+          }
+        } else if (lane >= this.keyNum) {
+          // 速度変化の追加/削除
+          const speedPieceService = this.speedPieceService as SpeedPieceService;
+          const speedType: SpeedType = shiftKey ? "boost" : "speed";
+          const page = this.page;
+
+          if (speedPieceService.hasSpeedPiece(page, position)) {
+            speedPieceService.remove(page, position);
+            speedPieceService.clear(position);
+          } else {
+            speedPieceService.add(page, position, speedType);
+            speedPieceService.draw(position, speedType);
+          }
+        }
+
+        // カーソルの移動
+        this.currentPosition = position;
+        this.currentPositionService.move(this.currentPosition, this.page, this.timing);
       }
     },
   },
