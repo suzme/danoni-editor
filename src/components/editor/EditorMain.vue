@@ -8,6 +8,8 @@
       @mouseup.prevent="clickAction"
       @touchstart.prevent="touchStartAction"
       @touchend.prevent="touchEndAction"
+      @focus="canvasFocus"
+      @blur="canvasBlur"
     ></div>
     <speed-piece
       v-for="(speed, index) in scoreData.scores[page - 1].speeds"
@@ -75,6 +77,7 @@ type DataType = {
   previousPosition: number;
   previousPage: number;
   previousDate: Date;
+  hasCanvasFocus: boolean;
   longTouchList: { [name: number]: { timer: NodeJS.Timer, touch: Touch } };
 };
 
@@ -117,6 +120,7 @@ export default defineComponent({
       previousPosition: 0,
       previousPage: 1,
       previousDate: new Date(0),
+      hasCanvasFocus: false,
       longTouchList: {}
     };
   },
@@ -291,7 +295,7 @@ export default defineComponent({
       const rect = new Konva.Rect({
         width: editorWidth,
         height: editorHeight,
-        stroke: "black",
+        stroke: this.hasCanvasFocus ? "black" : "gray",
         strokeWidth: 1,
       });
       baseLayer.add(rect);
@@ -636,6 +640,20 @@ export default defineComponent({
       }
     },
 
+    canvasFocus() {
+      setTimeout(() => {
+        this.hasCanvasFocus = true;
+        this.baseLayerDraw();
+      }, 100);
+    },
+
+    canvasBlur() {
+      setTimeout(() => {
+        this.hasCanvasFocus = false;
+        this.baseLayerDraw();
+      }, 100);
+    },
+
     // タッチ開始時
     touchStartAction(e: TouchEvent) {
       Array.from(e.changedTouches).forEach(touch => {
@@ -687,7 +705,9 @@ export default defineComponent({
 
     // クリック時の処理
     clickAction(e: MouseEvent) {
-      this.clickTapAction(e.offsetX, e.offsetY, e.shiftKey);
+      if (this.hasCanvasFocus) {
+        this.clickTapAction(e.offsetX, e.offsetY, e.shiftKey);
+      }
     },
 
     // クリック/タップ時の処理
