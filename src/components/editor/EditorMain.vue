@@ -39,7 +39,7 @@ import {
   laneColors,
   canvasMarginHorizontal,
   canvasMarginVertical,
-  longTapThreshold
+  longTapThreshold,
 } from "./EditorConstant";
 import { Timing } from "../../model/Timing";
 import { MusicService } from "./service/MusicService";
@@ -78,7 +78,7 @@ type DataType = {
   previousPage: number;
   previousDate: Date;
   hasCanvasFocus: boolean;
-  longTouchList: { [name: number]: { timer: NodeJS.Timer, touch: Touch } };
+  longTouchList: { [name: number]: { timer: NodeJS.Timer; touch: Touch } };
 };
 
 export default defineComponent({
@@ -121,7 +121,7 @@ export default defineComponent({
       previousPage: 1,
       previousDate: new Date(0),
       hasCanvasFocus: false,
-      longTouchList: {}
+      longTouchList: {},
     };
   },
 
@@ -656,7 +656,7 @@ export default defineComponent({
 
     // タッチ開始時
     touchStartAction(e: TouchEvent) {
-      Array.from(e.changedTouches).forEach(touch => {
+      Array.from(e.changedTouches).forEach((touch) => {
         // 一定時間後に長押しとして処理する
         const timer = setTimeout(() => {
           this.tapAction(touch, true);
@@ -669,7 +669,7 @@ export default defineComponent({
 
     // タッチ終了時
     touchEndAction(e: TouchEvent) {
-      Array.from(e.changedTouches).forEach(touch => {
+      Array.from(e.changedTouches).forEach((touch) => {
         // リストに残っている(長押しとして処理されていない)ものは通常タップとして処理
         const start = this.longTouchList[touch.identifier];
         if (start) {
@@ -682,7 +682,7 @@ export default defineComponent({
 
     // 長押しリストとタイマーのクリア
     clearLongTouchList() {
-      Object.values(this.longTouchList).forEach(value => {
+      Object.values(this.longTouchList).forEach((value) => {
         clearTimeout(value.timer);
       });
 
