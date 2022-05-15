@@ -460,6 +460,16 @@ export default defineComponent({
       } else this.currentPositionService.move(this.currentPosition, this.page, this.timing);
     },
 
+    togglePlay() {
+      if (!this.musicTimer) {
+        const timing = this.timing;
+        this.playMusicLoop(timing);
+      } else {
+        const timer = this.musicTimer;
+        this.stopMusicLoop(timer);
+      }
+    },
+
     // キーを押したときの挙動
     keydownAction(e: KeyboardEvent): void {
       const noteService = this.noteService as NoteService;
@@ -545,13 +555,7 @@ export default defineComponent({
       } else {
         switch (e.code) {
           case "Enter": {
-            if (!this.musicTimer) {
-              const timing = this.timing;
-              this.playMusicLoop(timing);
-            } else {
-              const timer = this.musicTimer;
-              this.stopMusicLoop(timer);
-            }
+            this.togglePlay();
             break;
           }
           case "Backspace":

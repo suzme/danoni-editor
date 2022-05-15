@@ -157,7 +157,7 @@ input[type="number"].editor-speed-piece::-webkit-inner-spin-button {
 .btn-orange {
   color: #ff9c4a;
   border: solid 2px #ff9c4a;
-  width: 100px;
+  font-size: 80%;
 }
 
 .menu-output-btn:hover {
