@@ -5,7 +5,7 @@ export function createCustomKeyConfig(): CustomKeyConfig {
   let keyConfig: KeyConfig;
   if (customKeyConfigStr) {
     const obj = JSON.parse(customKeyConfigStr) as CustomKeyConfig;
-    keyConfig = Object.assign(DefaultKeyConfig, obj);
+    keyConfig = Object.assign({ ...DefaultKeyConfig }, obj);
   } else {
     keyConfig = DefaultKeyConfig;
   }
